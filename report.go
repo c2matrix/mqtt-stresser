@@ -16,7 +16,6 @@ type Summary struct {
 	Completed         int
 	InProgress        int
 	ConnectFailed     int
-	SubscribeFailed   int
 	TimeoutExceeded   int
 	Aborted           int
 
@@ -45,7 +44,6 @@ func buildSummary(nClient int, nMessages int, results []Result) (Summary, error)
 	nCompleted := 0
 	nInProgress := 0
 	nConnectFailed := 0
-	nSubscribeFailed := 0
 	nTimeoutExceeded := 0
 	nAborted := 0
 
@@ -62,8 +60,6 @@ func buildSummary(nClient int, nMessages int, results []Result) (Summary, error)
 			switch r.Event {
 			case "ConnectFailed":
 				nConnectFailed++
-			case "SubscribeFailed":
-				nSubscribeFailed++
 			case "TimeoutExceeded":
 				nTimeoutExceeded++
 			case "Aborted":
@@ -104,7 +100,6 @@ func buildSummary(nClient int, nMessages int, results []Result) (Summary, error)
 		Completed:                   nCompleted,
 		InProgress:                  nInProgress,
 		ConnectFailed:               nConnectFailed,
-		SubscribeFailed:             nSubscribeFailed,
 		TimeoutExceeded:             nTimeoutExceeded,
 		Aborted:                     nAborted,
 		PublishPerformance:          publishPerformance,
@@ -134,7 +129,6 @@ func printSummary(summary Summary) {
 
 	if summary.Errors > 0 {
 		fmt.Printf("- ConnectFailed:      %d (%.0f%%)\n", summary.ConnectFailed, (float64(summary.ConnectFailed) / float64(summary.Errors) * 100))
-		fmt.Printf("- SubscribeFailed:    %d (%.0f%%)\n", summary.SubscribeFailed, (float64(summary.SubscribeFailed) / float64(summary.Errors) * 100))
 		fmt.Printf("- TimeoutExceeded:    %d (%.0f%%)\n", summary.TimeoutExceeded, (float64(summary.TimeoutExceeded) / float64(summary.Errors) * 100))
 		fmt.Printf("- Aborted:            %d (%.0f%%)\n", summary.InProgress, (float64(summary.InProgress) / float64(summary.Clients) * 100))
 	}

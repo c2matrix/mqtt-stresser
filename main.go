@@ -1,7 +1,8 @@
 package main
 
 import (
-	"flag"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,36 +16,36 @@ import (
 )
 
 var (
+	config             *tls.Config
 	resultChan         = make(chan Result)
 	abortChan          = make(chan bool)
 	stopWaitLoop       = false
 	tearDownInProgress = false
 	randomSource       = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	subscriberClientIdTemplate = "mqtt-stresser-sub-%s-worker%d-%d"
-	publisherClientIdTemplate  = "mqtt-stresser-pub-%s-worker%d-%d"
-	topicNameTemplate          = "internal/mqtt-stresser/%s/worker%d-%d"
+	publisherClientIdTemplate = "c2-%d-%d"
+	topicNameTemplate         = "Login/HD_Login/%d"
 
 	opTimeout = 5 * time.Second
 
 	errorLogger   = log.New(os.Stderr, "ERROR: ", log.Lmicroseconds|log.Ltime|log.Lshortfile)
 	verboseLogger = log.New(os.Stderr, "DEBUG: ", log.Lmicroseconds|log.Ltime|log.Lshortfile)
 
-	argNumClients    = flag.Int("num-clients", 10, "Number of concurrent clients")
-	argNumMessages   = flag.Int("num-messages", 10, "Number of messages shipped by client")
-	argTimeout       = flag.String("timeout", "5s", "Timeout for pub/sub loop")
-	argGlobalTimeout = flag.String("global-timeout", "60s", "Timeout spanning all operations")
-	argRampUpSize    = flag.Int("rampup-size", 100, "Size of rampup batch")
-	argRampUpDelay   = flag.String("rampup-delay", "500ms", "Time between batch rampups")
-	argTearDownDelay = flag.String("teardown-delay", "5s", "Graceperiod to complete remaining workers")
-	argBrokerUrl     = flag.String("broker", "", "Broker URL")
-	argUsername      = flag.String("username", "", "Username")
-	argPassword      = flag.String("password", "", "Password")
-	argLogLevel      = flag.Int("log-level", 0, "Log level (0=nothing, 1=errors, 2=debug, 3=error+debug)")
-	argProfileCpu    = flag.String("profile-cpu", "", "write cpu profile `file`")
-	argProfileMem    = flag.String("profile-mem", "", "write memory profile to `file`")
-	argHideProgress  = flag.Bool("no-progress", false, "Hide progress indicator")
-	argHelp          = flag.Bool("help", false, "Show help")
+	argNumClients    = 5000                   //flag.Int("num-clients", 10, "Number of concurrent clients")
+	argNumMessages   = 10                     //flag.Int("num-messages", 10, "Number of messages shipped by client")
+	argTimeout       = "5s"                   //flag.String("timeout", "5s", "Timeout for pub/sub loop")
+	argGlobalTimeout = "60s"                  //flag.String("global-timeout", "60s", "Timeout spanning all operations")
+	argRampUpSize    = 100                    //flag.Int("rampup-size", 100, "Size of rampup batch")
+	argRampUpDelay   = "500ms"                //flag.String("rampup-delay", "500ms", "Time between batch rampups")
+	argTearDownDelay = "5s"                   //flag.String("teardown-delay", "5s", "Graceperiod to complete remaining workers")
+	argBrokerUrl     = "tls://127.0.0.1:3563" //flag.String("broker", "", "Broker URL")
+	argUsername      = ""                     //flag.String("username", "", "Username")
+	argPassword      = ""                     //flag.String("password", "", "Password")
+	argLogLevel      = 0                      //flag.Int("log-level", 0, "Log level (0=nothing, 1=errors, 2=debug, 3=error+debug)")
+	argProfileCpu    = ""                     //flag.String("profile-cpu", "", "write cpu profile `file`")
+	argProfileMem    = ""                     //flag.String("profile-mem", "", "write memory profile to `file`")
+	argHideProgress  = false                  //flag.Bool("no-progress", false, "Hide progress indicator")
+	argHelp          = false                  //flag.Bool("help", false, "Show help")
 )
 
 type Worker struct {
@@ -68,15 +69,29 @@ type Result struct {
 }
 
 func main() {
-	flag.Parse()
+	// flag.Parse()
 
-	if flag.NFlag() < 1 || *argHelp {
-		flag.Usage()
-		os.Exit(1)
+	// if flag.NFlag() < 1 || argHelp {
+	// 	flag.Usage()
+	// 	os.Exit(1)
+	// }
+
+	// load root ca
+	// 需要一个证书，这里使用的这个网站提供的证书https://curl.haxx.se/docs/caextract.html
+	caData, err := ioutil.ReadFile("/Users/c2matrix/project/server/src/github.com/liangdas/armyant/mqtt_task/caextract.pem")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	pool := x509.NewCertPool()
+	pool.AppendCertsFromPEM(caData)
+
+	config = &tls.Config{
+		RootCAs:            nil,
+		InsecureSkipVerify: true,
 	}
 
-	if *argProfileCpu != "" {
-		f, err := os.Create(*argProfileCpu)
+	if argProfileCpu != "" {
+		f, err := os.Create(argProfileCpu)
 
 		if err != nil {
 			fmt.Printf("Could not create CPU profile: %s\n", err)
@@ -87,20 +102,20 @@ func main() {
 		}
 	}
 
-	num := *argNumMessages
-	brokerUrl := *argBrokerUrl
-	username := *argUsername
-	password := *argPassword
-	testTimeout, _ := time.ParseDuration(*argTimeout)
+	num := argNumMessages
+	brokerUrl := argBrokerUrl
+	username := argUsername
+	password := argPassword
+	testTimeout, _ := time.ParseDuration(argTimeout)
 
 	verboseLogger.SetOutput(ioutil.Discard)
 	errorLogger.SetOutput(ioutil.Discard)
 
-	if *argLogLevel == 1 || *argLogLevel == 3 {
+	if argLogLevel == 1 || argLogLevel == 3 {
 		errorLogger.SetOutput(os.Stderr)
 	}
 
-	if *argLogLevel == 2 || *argLogLevel == 3 {
+	if argLogLevel == 2 || argLogLevel == 3 {
 		verboseLogger.SetOutput(os.Stderr)
 	}
 
@@ -111,16 +126,16 @@ func main() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
-	rampUpDelay, _ := time.ParseDuration(*argRampUpDelay)
-	rampUpSize := *argRampUpSize
+	rampUpDelay, _ := time.ParseDuration(argRampUpDelay)
+	rampUpSize := argRampUpSize
 
 	if rampUpSize < 0 {
 		rampUpSize = 100
 	}
 
-	resultChan = make(chan Result, *argNumClients**argNumMessages)
+	resultChan = make(chan Result, argNumClients*argNumMessages)
 
-	for cid := 0; cid < *argNumClients; cid++ {
+	for cid := 0; cid < argNumClients; cid++ {
 
 		if cid%rampUpSize == 0 && cid > 0 {
 			fmt.Printf("%d worker started - waiting %s\n", cid, rampUpDelay)
@@ -136,34 +151,34 @@ func main() {
 			Timeout:   testTimeout,
 		}).Run()
 	}
-	fmt.Printf("%d worker started\n", *argNumClients)
+	fmt.Printf("%d worker started\n", argNumClients)
 
 	finEvents := 0
 
 	timeout := make(chan bool, 1)
-	globalTimeout, _ := time.ParseDuration(*argGlobalTimeout)
-	results := make([]Result, *argNumClients)
+	globalTimeout, _ := time.ParseDuration(argGlobalTimeout)
+	results := make([]Result, argNumClients)
 
 	go func() {
 		time.Sleep(globalTimeout)
 		timeout <- true
 	}()
 
-	for finEvents < *argNumClients && !stopWaitLoop {
+	for finEvents < argNumClients && !stopWaitLoop {
 		select {
 		case msg := <-resultChan:
 			results[msg.WorkerId] = msg
 
 			if msg.Event == "Completed" || msg.Error {
 				finEvents++
-				verboseLogger.Printf("%d/%d events received\n", finEvents, *argNumClients)
+				verboseLogger.Printf("%d/%d events received\n", finEvents, argNumClients)
 			}
 
 			if msg.Error {
 				errorLogger.Println(msg)
 			}
 
-			if *argHideProgress == false {
+			if argHideProgress == false {
 				if msg.Event == "Completed" {
 					fmt.Print(".")
 				}
@@ -175,7 +190,7 @@ func main() {
 
 		case <-timeout:
 			fmt.Println()
-			fmt.Printf("Aborted because global timeout (%s) was reached.\n", *argGlobalTimeout)
+			fmt.Printf("Aborted because global timeout (%s) was reached.\n", argGlobalTimeout)
 
 			go tearDownWorkers()
 		case signal := <-signalChan:
@@ -186,7 +201,7 @@ func main() {
 		}
 	}
 
-	summary, err := buildSummary(*argNumClients, num, results)
+	summary, err := buildSummary(argNumClients, num, results)
 	exitCode := 0
 
 	if err != nil {
@@ -195,8 +210,8 @@ func main() {
 		printSummary(summary)
 	}
 
-	if *argProfileMem != "" {
-		f, err := os.Create(*argProfileMem)
+	if argProfileMem != "" {
+		f, err := os.Create(argProfileMem)
 
 		if err != nil {
 			fmt.Printf("Could not create memory profile: %s\n", err)
@@ -221,7 +236,7 @@ func tearDownWorkers() {
 
 		close(abortChan)
 
-		delay, _ := time.ParseDuration(*argTearDownDelay)
+		delay, _ := time.ParseDuration(argTearDownDelay)
 		fmt.Printf("Waiting %s for remaining workers\n", delay)
 		time.Sleep(delay)
 
