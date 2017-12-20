@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,7 +14,6 @@ import (
 )
 
 var (
-	config             *tls.Config
 	resultChan         = make(chan Result)
 	abortChan          = make(chan bool)
 	stopWaitLoop       = false
@@ -34,7 +32,7 @@ var (
 	argNumMessages   = 10                     //flag.Int("num-messages", 10, "Number of messages shipped by client")
 	argTimeout       = "15s"                  //flag.String("timeout", "5s", "Timeout for pub/sub loop")
 	argGlobalTimeout = "60s"                  //flag.String("global-timeout", "60s", "Timeout spanning all operations")
-	argRampUpSize    = 120                    //flag.Int("rampup-size", 100, "Size of rampup batch")
+	argRampUpSize    = 150                    //flag.Int("rampup-size", 100, "Size of rampup batch")
 	argRampUpDelay   = "500ms"                //flag.String("rampup-delay", "500ms", "Time between batch rampups")
 	argTearDownDelay = "15s"                  //flag.String("teardown-delay", "5s", "Graceperiod to complete remaining workers")
 	argBrokerUrl     = "tls://127.0.0.1:3563" //flag.String("broker", "", "Broker URL")
