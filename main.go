@@ -25,18 +25,18 @@ var (
 	publisherClientIdTemplate = "c2-%d-%d"
 	topicNameTemplate         = "Login/HD_Login/%d"
 
-	opTimeout = 5 * time.Second
+	opTimeout = 15 * time.Second
 
 	errorLogger   = log.New(os.Stderr, "ERROR: ", log.Lmicroseconds|log.Ltime|log.Lshortfile)
 	verboseLogger = log.New(os.Stderr, "DEBUG: ", log.Lmicroseconds|log.Ltime|log.Lshortfile)
 
 	argNumClients    = 5000                   //flag.Int("num-clients", 10, "Number of concurrent clients")
 	argNumMessages   = 10                     //flag.Int("num-messages", 10, "Number of messages shipped by client")
-	argTimeout       = "5s"                   //flag.String("timeout", "5s", "Timeout for pub/sub loop")
+	argTimeout       = "15s"                  //flag.String("timeout", "5s", "Timeout for pub/sub loop")
 	argGlobalTimeout = "60s"                  //flag.String("global-timeout", "60s", "Timeout spanning all operations")
 	argRampUpSize    = 100                    //flag.Int("rampup-size", 100, "Size of rampup batch")
 	argRampUpDelay   = "500ms"                //flag.String("rampup-delay", "500ms", "Time between batch rampups")
-	argTearDownDelay = "5s"                   //flag.String("teardown-delay", "5s", "Graceperiod to complete remaining workers")
+	argTearDownDelay = "15s"                  //flag.String("teardown-delay", "5s", "Graceperiod to complete remaining workers")
 	argBrokerUrl     = "tls://127.0.0.1:3563" //flag.String("broker", "", "Broker URL")
 	argUsername      = ""                     //flag.String("username", "", "Username")
 	argPassword      = ""                     //flag.String("password", "", "Password")
