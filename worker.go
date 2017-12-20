@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"strings"
 	"time"
@@ -25,6 +26,12 @@ func (w *Worker) Run() {
 	publisherOptions.SetCleanSession(false)
 	publisherOptions.SetProtocolVersion(3)
 	publisherOptions.SetAutoReconnect(false)
+
+	config := &tls.Config{
+		RootCAs:            nil,
+		InsecureSkipVerify: true,
+	}
+
 	publisherOptions.SetTLSConfig(config)
 
 	publisherOptions.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -75,20 +74,6 @@ func main() {
 	// 	flag.Usage()
 	// 	os.Exit(1)
 	// }
-
-	// load root ca
-	// 需要一个证书，这里使用的这个网站提供的证书https://curl.haxx.se/docs/caextract.html
-	caData, err := ioutil.ReadFile("/Users/c2matrix/project/server/src/github.com/liangdas/armyant/mqtt_task/caextract.pem")
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	pool := x509.NewCertPool()
-	pool.AppendCertsFromPEM(caData)
-
-	config = &tls.Config{
-		RootCAs:            nil,
-		InsecureSkipVerify: true,
-	}
 
 	if argProfileCpu != "" {
 		f, err := os.Create(argProfileCpu)
