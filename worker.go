@@ -71,7 +71,7 @@ func (w *Worker) Run() {
 		token := publisher.Publish(topicName, 0, false, text)
 		publishedCount++
 		token.Wait()
-		time.Sleep(1 * time.Second) //每隔1s发消息，模拟更真实的用户行为？
+		//time.Sleep(1 * time.Millisecond) //每隔0.5s发消息，模拟更真实的用户行为？
 	}
 	//publisher.Disconnect(250)
 
